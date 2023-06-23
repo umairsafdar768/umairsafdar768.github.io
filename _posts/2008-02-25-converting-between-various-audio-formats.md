@@ -1,16 +1,17 @@
 ---
-title: My first blog
-date: 2023-06-19 09:00:00 +0100
-categories: [test, blog]
-tags: [beginner, abc, hhh]
+title: Strongswan PSK Based Tunnel Using Debian VMs
+date: 2023-06-23 01:00:00
+categories: [vpn, configuration]
+tags: [strongswan, vpn, ubuntu, debian, aes, virtual machine]
 math: true
 ---
 
-This is my 1st blog post
 
-# This is an h1 heading
+# The Scenario
 
-Hello this is some text
+Today we will be implementing a secure communication tunnel between two Debian gateways hosted on Vmware Virtual Machines. Here is a rough sketch of the network interconnect
+
+![My Azio Retro Compact Keyboard, Elwood version](/assets/img/posts/post1/pic1.png){: width="700"}
 
 ```c
 printf("hello world");
