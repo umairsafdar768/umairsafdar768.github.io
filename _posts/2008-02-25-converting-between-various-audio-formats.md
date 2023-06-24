@@ -11,7 +11,7 @@ math: true
 
 Today we will be implementing a secure communication tunnel between two Debian gateways hosted on Vmware Virtual Machines. Here is a rough sketch of the network interconnect
 
-![My Azio Retro Compact Keyboard, Elwood version](/_assets/img/posts/post1/pic1.png){: width="700"}
+![Network Interconnect](/assets/img/posts/post1/pic1.png){: width="700"}
 
 ```c
 printf("hello world");
