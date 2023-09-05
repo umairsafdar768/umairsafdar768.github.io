@@ -10,17 +10,14 @@ math: true
 # Background
 
 As we all know that the advent of sufficiently powerful quantum computers poses a significant threat to our exisiting Public Key cryptosystems. This is due to the ability of quantum computers to be able to break the underlying mathematical problems of integer factorization & discrete logarithm.     
-In this regard, there is an ongoing effort to standardize Post Quantum secure Key Encapsulation Mechanism (KEM) & Digital Signature Algorithms by NIST. As of September 2023, NIST has already approved one key exchange method (Kyber) and three Digital Signature algorithms (Falcon, Dilithium & SPNHINCS+). In this blog, we'll take a look at how we can we can use these algorithms inside Strongswan to establish VPN tunnels that are Post Quantum secure.  
-
-
-We shall setup two VMware machines with Debian 12 Linux, and install *Strongswan* from source in both of them. Also we'll add two Network Interface Cards per VM so that we have two interfaces, one for the tunnel, and the other one for the subnet. After the above setup, we move towards *Strongswan* installation.
+In this regard, there is an ongoing effort to standardize Post Quantum secure Key Encapsulation Mechanism (KEM) & Digital Signature Algorithms by NIST. As of September 2023, NIST has already approved one key exchange method (Kyber) and three Digital Signature algorithms (Falcon, Dilithium & SPNHINCS+). In this blog, we'll take a look at how we can we can use these algorithms inside Strongswan to establish VPN tunnels that are Post Quantum secure.
 
 # LibOQS
 
-LibOQS is the open source C library that provides a collection of implementation of Post Quantum Safe KEM and Digital Signature algorithms. It is released under the MIT Licence and supports builds that are both multi-platform(Linux, macOS, Windows) and multi-architecture(x86_64 & ARM) compliant. The purpose of this library is prototyping & evaluation of quantum resistan cryptography.
+LibOQS is the open source C library that provides a collection of implementation of Post Quantum Safe KEM and Digital Signature algorithms. It is released under the MIT Licence and supports builds that are both multi-platform(Linux, macOS, Windows) and multi-architecture(x86_64 & ARM) compliant. The purpose of this library is prototyping & evaluation of quantum resistant cryptography.
 
 # PQ Secure Strongswan Beta Release 
-Strongswan is the complete IPSec solution providing encryption & authentication to client and a server for secure communication. Details of how to setup simple strongswan on two endpoints are covered in my previous [blog](https://umairsafdar768.github.io/posts/converting-between-various-audio-formats/). Here we will focus on the Post Quantum secure implementation of Strongswan that utilizes the above mentioned LibOQS library.  
+Strongswan is the complete IPSec solution providing encryption & authentication to client and a server for secure communication. Details of how to setup simple strongswan between two endpoints are covered in my previous [blog](https://umairsafdar768.github.io/posts/converting-between-various-audio-formats/). Here we will focus on the Post Quantum secure implementation of Strongswan that utilizes the above mentioned LibOQS library.  
 At the time of this writing, *strongswan-6.0.0beta4* is the latest release of PQ secure Strongswan that uses the codebase of *strongswan-5.9.11* as well as *liboqs-0.8.0* version
 
 
@@ -30,7 +27,7 @@ We start by installing the dependencies for LibOQS using
 sudo apt install astyle cmake gcc ninja-build libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz python3-yaml valgrind
 ```
 Then we go towards compiling libOQS from source as a shared library. This shared library will later be used during strongswan compilation for building the "oqs" plugin that enables PQ crypto algorithms.  
-Go to your home directory, and create a directory for LibOQS source. Then we clone the LibOQS github repository into this directory. As a user we proceed as follows
+Go to your home directory, and create a directory for LibOQS source. Then we clone the LibOQS github repository into this directory. As a super user we proceed as follows
 
 ```bash
 cd ~
@@ -64,7 +61,7 @@ At this point, we should have all the required files properly installed inside t
 Take a note of the 'lib' and 'include' directories as they will be used later during PQ Strongswan compilation. This is all thats needed of LibOQS at this time. Now we move towards PQ Strongswan compilation.
 
 ## Testing The Compiled Library
-Before moving towards strongswan compilation, we need to test whether the LibOQS shared library has been compiled successfully and that we can include it in a C program file. For this purpose, there are various example C files given in 'tests' directory of LibOQS using which we can test the library.  
+Before moving towards strongswan compilation, we need to test whether the LibOQS shared library has been compiled successfully and that we can use it in a C program file. For this purpose, there are various example C files given in 'tests' directory of LibOQS using which we can test the library.  
 We go to the main LibOQS directory, and then run a customized 'gcc' command to compile the 'example_kem.c' file in 'tests' directory.
 ```bash
 cd /home/umair/liboqs-src/liboqs
@@ -81,7 +78,7 @@ Below is a brief explanation of the above 'gcc' command used for compilation
 
 * **-Ibuild/include**: The -I option specifies the directory/s to be searched for header files being included 
 * **-Lbuild/lib/**: The -L option specifies the directory/s to be searched for libraires specified in the -l option. In this case, the shared library of LibOQS will be found in build/lib directory
-* **-Wl,-rpath=build/lib**: The -Wl is used to pass options to the linker, in this case -rpath is being passed as option to the linker. The -rpath option specifies the directory to be searched for  shared library (LibOQS in this case) for the 'ld' linker
+* **-Wl,-rpath=build/lib**: The -Wl is used to pass options to the linker, in this case -rpath is being passed as option to the linker. The -rpath option specifies the directory to be searched for  shared library (oqs in this case) for the 'ld' linker
 * **tests/example_kem.c -o example_kem**: The C file as input and compiled binary as output is being specified here
 * **-loqs -lcrypto**: The -l option specifies the name of shared libraries being used by the program.
 
@@ -106,7 +103,7 @@ Next, we run the configure script as follows.
 ```bash
 LIBS=-loqs CFLAGS=-I/home/umair/liboqs-src/liboqs/build/include/ LDFLAGS=-L/home/umair/liboqs-src/liboqs/build/lib/ ./configure --prefix=/home/umair/strongswan-src/strongswan-6.0.0beta4/build/ --enable-oqs
 ```
-These options will make sure to include the proper header files and shared LibOQS library during strongswan configuration. More detail about different options for the configure script are avavialble by running it with '--help' option.  
+These options will make sure to include the proper header files and shared LibOQS library during strongswan configuration. More detail about different options for the configure script are available by running it with '--help' option.  
 The output of a successful run of the configure script will be
 
 ![Build Directory Content](/assets/img/posts/post2/config-success.png){: width="500"}  
@@ -139,7 +136,7 @@ We should see the following output
 
 ![Strongswan build directory](/assets/img/posts/post2/charon-running.png){: width="500"}    
 
-Notice 'oqs' in the list of loaded plugins. This means that everything uptil this point was configured correctly and oqs plugins has been successfully loaded.
+Notice 'oqs' in the list of loaded plugins. This means that everything uptil this point was configured correctly and the oqs plugin has been successfully loaded.
 
 Open another terminal window, convert to super user, and repeat the previous process of setting the environment variable correctly.
 
