@@ -27,7 +27,7 @@ We start by installing the dependencies for LibOQS using
 sudo apt install astyle cmake gcc ninja-build libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz python3-yaml valgrind
 ```
 Then we go towards compiling libOQS from source as a shared library. This shared library will later be used during strongswan compilation for building the "oqs" plugin that enables PQ crypto algorithms.  
-Go to your home directory, and create a directory for LibOQS source. Then we clone the LibOQS github repository into this directory. As a super user we proceed as follows
+Go to your home directory, and create a directory for LibOQS source. Then we clone the LibOQS github repository into this directory. As a normal user we proceed as follows
 
 ```bash
 cd ~
@@ -156,3 +156,128 @@ The output contains
 ![Strongswan build directory](/assets/img/posts/post2/pq-algos.png){: width="500"}    
 
 At this point, we are now ready to start configuring swanctl config files to for the ikev2 tunnel between two end-points and use Post Quantum secure algorithms between them.
+
+
+# Testing
+Our test scenario includes establishing an IPSec tunnel using one of the available PQ crypto algorithms between two end-points. One of the end-points will be my local machine connected to a home network with a router that performs NATting using a Public IP on the WAN side and local private subnet on the LAN side. The other end point will be an AWS EC2 instance of Ubuntu running PQ Secure strongswan which has been compiled using the above descibed method.  
+Once we have PQ strongswan successfully running on both end points, we proceed towards swanctl and other configuration files on both local machine and the AWS instance.
+
+## AWS EC2 Instance Configurations
+To keep things simple, we will try to use as much of the default settings in AWS as possible. These include staying as close to default Routes, Subnets, Public IP, and Security Groups as possible. We will only modify the Security Groups to allow ICMP, SSH and UDP traffic at port 500 (and 4500) for Ping, Remote Access and ISAKMP packets respectively.
+Following are the inbound rules for this security group
+
+![Strongswan build directory](/assets/img/posts/post2/sec-group1.png){: width="500"}    
+
+Note: These rules are being used only for testing purposes. In a real production environment, you wouldn't be specifying wildcard addresses like 0.0.0.0/0 that allow inbound traffic from *anywhere*  
+Next, we configure the swanctl.conf file at '/home/ubuntu/sswan-src/strongswan-6.0.0beta4/build/etc/swanctl' as follows
+
+```
+connections {
+
+   gw-gw {
+      local_addrs  = <private IP of EC2 instance connected to Internet gateway>
+      remote_addrs = <Public IP of Home Router>
+
+      local {
+         auth = psk
+         #id = moon.strongswan.org
+      }
+      remote {
+         auth = psk
+         #id = sun.strongswan.org
+      }
+      children {
+         net-net {
+            local_ts  = 10.10.10.0/24
+            remote_ts = 10.10.10.0/24
+
+            #updown = /usr/local/libexec/ipsec/_updown iptables
+            rekey_time = 5400
+            rekey_bytes = 500000000
+            rekey_packets = 1000000
+            esp_proposals = aes256-sha256-x25519-ke1_kyber3
+         }
+      }
+      version = 2
+      mobike = no
+      reauth_time = 10800
+      proposals = aes256-sha256-x25519-ke1_kyber3
+   }
+}
+
+secrets {
+   ike-1 {
+      id = 0.0.0.0/0
+      secret=<pre-shared key>
+}}
+
+```
+
+## Local Machine Configurations
+Keeping everything close to defaults, we dont need to change any Firewall rules to allow ports or anything. As this is a simple testing scenario, we will initiate tunnel connections from the local end-point. This will ensure that IPSec connections are seen by the router as outbound connections and hence they won't be blocked by the router.  
+We now configure the swanctl file of our local machine placed at '/home/umair/strongswan-src/strongswan-6.0.0beta4/build/etc/swanctl' as follows
+
+```
+connections {
+
+   gw-gw {
+      local_addrs  = <Private IP of local machine obtained by router's DHCP>
+      remote_addrs = <Public IP of EC2 instance>
+
+      local {
+         auth = psk
+         #id = moon.strongswan.org
+      }
+      remote {
+         auth = psk
+         #id = sun.strongswan.org
+      }
+      children {
+         net-net {
+            local_ts  = 10.10.10.0/24
+            remote_ts = 10.10.10.0/24
+
+            #updown = /usr/local/libexec/ipsec/_updown iptables
+            rekey_time = 5400
+            rekey_bytes = 500000000
+            rekey_packets = 1000000
+            esp_proposals = aes256-sha256-x25519-ke1_kyber3
+         }
+      }
+      version = 2
+      mobike = no
+      reauth_time = 10800
+      proposals = aes256-sha256-x25519-ke1_kyber3
+   }
+}
+
+secrets {
+   ike-1 {
+      id = 0.0.0.0/0
+      secret=<pre-shared key>
+}}
+```
+
+After the swanctl.conf files have been properly configured on both endpoints, we will start the charon daemon. It is found in the 'strongswan-build-directory'/libexec/ipsec on both endpoints. Next, in another terminal window, we move into 'strongswan-build-directory'/sbin and use 
+
+```bash
+./swanctl --load-all
+```
+command to load the configurations that were written into the swanctl.conf file. Following is the output of this command
+
+![Strongswan build directory](/assets/img/posts/post2/load-all.png){: width="500"}    
+
+After loading the swanctl configuration on both endpoints, we move towards initiating the IPSec tunnel from the local machine and monitoring IPSec packets on the EC2 instance.  
+
+First we run the logs monitoring command on the EC2 instance as
+```bash 
+tail -F /var/log/syslog
+```
+
+Now run the swanctl initiation for child_sa from local machine as below
+
+```bash
+./swanctl --initiate --child net-net
+```
+
+A PQ secure tunnel using PQ Kyber KEM algorithm has been successfully established between the two endpoints. Now any communication from the specified traffic selectors will go through the internal encrypted/authenticated ESP tunnel.
