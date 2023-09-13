@@ -1,7 +1,7 @@
 ---
 title: Cross-compiling Post Quantum Secure Strongswan for Windows
-date: 2023-09-11 01:00:00
-categories: [post quantum, vpn, compilation, quantum]
+date: 2023-09-13 01:00:00
+categories: [post quantum, cross-compilation, vpn, quantum secure, Windows, Mingw]
 tags: [strongswan, vpn, ubuntu, post quantum, liboqs, compile]
 math: true
 ---
@@ -163,6 +163,8 @@ Specific portion of the output looks like this
 Our test scenario includes establishing an IPSec tunnel using one of the available PQ crypto algorithms between two end-points. One of the end-points will be my local machine connected to a home network with a router that performs NATting using a Public IP on the WAN side and local private subnet on the LAN side. The other end point will be an AWS EC2 instance of Ubuntu running PQ Secure strongswan which has been compiled using the above descibed method.  
 Once we have PQ strongswan successfully running on both end points, we proceed towards swanctl and other configuration files on both local machine and the AWS instance.
 
+
+asd
 ## AWS EC2 Instance Configurations
 To keep things simple, we will try to use as much of the default settings in AWS as possible. These include staying as close to default Routes, Subnets, Public IP, and Security Groups as possible. We will only modify the Security Groups to allow ICMP, SSH and UDP traffic at port 500 (and 4500) for Ping, Remote Access and ISAKMP packets respectively.
 Following are the inbound rules for this security group
